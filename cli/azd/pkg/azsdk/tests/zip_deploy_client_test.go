@@ -1,4 +1,4 @@
-package azsdk
+package azsdktests
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/convert"
 	"github.com/azure/azure-dev/cli/azd/test/mocks"
 	"github.com/stretchr/testify/require"
@@ -20,11 +21,11 @@ func TestZipDeploy(t *testing.T) {
 		registerDeployMocks(mockContext)
 		registerPollingMocks(mockContext)
 
-		options := NewClientOptionsBuilder().
+		options := azsdk.NewClientOptionsBuilder().
 			WithTransport(mockContext.HttpClient).
 			BuildArmClientOptions()
 
-		client, err := NewZipDeployClient("SUBSCRIPTION_ID", &mocks.MockCredentials{}, options)
+		client, err := azsdk.NewZipDeployClient("SUBSCRIPTION_ID", &mocks.MockCredentials{}, options)
 		require.NoError(t, err)
 
 		zipFile := bytes.NewBuffer([]byte{})
@@ -45,11 +46,11 @@ func TestZipDeploy(t *testing.T) {
 		registerDeployMocks(mockContext)
 		registerPollingErrorMocks(mockContext)
 
-		options := NewClientOptionsBuilder().
+		options := azsdk.NewClientOptionsBuilder().
 			WithTransport(mockContext.HttpClient).
 			BuildArmClientOptions()
 
-		client, err := NewZipDeployClient("SUBSCRIPTION_ID", &mocks.MockCredentials{}, options)
+		client, err := azsdk.NewZipDeployClient("SUBSCRIPTION_ID", &mocks.MockCredentials{}, options)
 		require.NoError(t, err)
 
 		zipFile := bytes.NewBuffer([]byte{})
@@ -69,11 +70,11 @@ func TestZipDeploy(t *testing.T) {
 		mockContext := mocks.NewMockContext(context.Background())
 		registerConflictMocks(mockContext)
 
-		options := NewClientOptionsBuilder().
+		options := azsdk.NewClientOptionsBuilder().
 			WithTransport(mockContext.HttpClient).
 			BuildArmClientOptions()
 
-		client, err := NewZipDeployClient("SUBSCRIPTION_ID", &mocks.MockCredentials{}, options)
+		client, err := azsdk.NewZipDeployClient("SUBSCRIPTION_ID", &mocks.MockCredentials{}, options)
 		require.NoError(t, err)
 
 		zipFile := bytes.NewBuffer([]byte{})
@@ -111,8 +112,8 @@ func registerPollingMocks(mockContext *mocks.MockContext) {
 		pollCount += 1
 		return request.Method == http.MethodGet && strings.Contains(request.URL.Path, "/deployments/latest")
 	}).RespondFn(func(request *http.Request) (*http.Response, error) {
-		acceptedStatus := DeployStatusResponse{
-			DeployStatus: DeployStatus{
+		acceptedStatus := azsdk.DeployStatusResponse{
+			DeployStatus: azsdk.DeployStatus{
 				Id:         "ID",
 				Status:     http.StatusAccepted,
 				StatusText: "Accepted",
@@ -124,8 +125,8 @@ func registerPollingMocks(mockContext *mocks.MockContext) {
 			},
 		}
 
-		completeStatus := DeployStatusResponse{
-			DeployStatus: DeployStatus{
+		completeStatus := azsdk.DeployStatusResponse{
+			DeployStatus: azsdk.DeployStatus{
 				Id:         "ID",
 				Status:     http.StatusOK,
 				StatusText: "OK",
@@ -159,8 +160,8 @@ func registerPollingErrorMocks(mockContext *mocks.MockContext) {
 	mockContext.HttpClient.When(func(request *http.Request) bool {
 		return request.Method == http.MethodGet && strings.Contains(request.URL.Path, "/deployments/latest")
 	}).RespondFn(func(request *http.Request) (*http.Response, error) {
-		errorStatus := DeployStatusResponse{
-			DeployStatus: DeployStatus{
+		errorStatus := azsdk.DeployStatusResponse{
+			DeployStatus: azsdk.DeployStatus{
 				Id:         "ID",
 				Status:     http.StatusBadRequest,
 				StatusText: "Error",

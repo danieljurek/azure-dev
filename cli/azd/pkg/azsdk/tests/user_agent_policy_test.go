@@ -1,4 +1,4 @@
-package azsdk
+package azsdktests
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/test/mocks"
 	"github.com/stretchr/testify/require"
 )
@@ -21,9 +22,9 @@ func TestOverrideUserAgent(t *testing.T) {
 		return mocks.CreateEmptyHttpResponse(request, http.StatusOK)
 	})
 
-	clientOptions := NewClientOptionsBuilder().
+	clientOptions := azsdk.NewClientOptionsBuilder().
 		WithTransport(mockContext.HttpClient).
-		WithPerCallPolicy(NewUserAgentPolicy(expectedUserAgent)).
+		WithPerCallPolicy(azsdk.NewUserAgentPolicy(expectedUserAgent)).
 		BuildArmClientOptions()
 
 	client, err := armresources.NewClient("SUBSCRIPTION_ID", &mocks.MockCredentials{}, clientOptions)

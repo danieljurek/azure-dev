@@ -1,4 +1,4 @@
-package azsdk
+package azsdktests
 
 import (
 	"context"
@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/test/mocks"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateArmOptions(t *testing.T) {
 	t.Run("WithDefaults", func(t *testing.T) {
-		builder := NewClientOptionsBuilder()
+		builder := azsdk.NewClientOptionsBuilder()
 		armOptions := builder.BuildArmClientOptions()
 
 		require.Nil(t, armOptions.Transport)
@@ -22,12 +23,12 @@ func TestCreateArmOptions(t *testing.T) {
 	t.Run("WithOverrides", func(t *testing.T) {
 		mockContext := mocks.NewMockContext(context.Background())
 
-		userAgentPolicy := NewUserAgentPolicy("custom-user-agent")
+		userAgentPolicy := azsdk.NewUserAgentPolicy("custom-user-agent")
 		perCallPolicy := &testPerCallPolicy{}
 		preRetryPolicy := &testPerRetryPolicy{}
 		transport := mockContext.HttpClient
 
-		builder := NewClientOptionsBuilder().
+		builder := azsdk.NewClientOptionsBuilder().
 			WithTransport(transport).
 			WithPerCallPolicy(userAgentPolicy).
 			WithPerCallPolicy(perCallPolicy).
@@ -44,7 +45,7 @@ func TestCreateArmOptions(t *testing.T) {
 
 func TestCreateCoreOptions(t *testing.T) {
 	t.Run("WithDefaults", func(t *testing.T) {
-		builder := NewClientOptionsBuilder()
+		builder := azsdk.NewClientOptionsBuilder()
 		armOptions := builder.BuildArmClientOptions()
 
 		require.Nil(t, armOptions.Transport)
@@ -54,12 +55,12 @@ func TestCreateCoreOptions(t *testing.T) {
 	t.Run("WithOverrides", func(t *testing.T) {
 		mockContext := mocks.NewMockContext(context.Background())
 
-		userAgentPolicy := NewUserAgentPolicy("custom-user-agent")
+		userAgentPolicy := azsdk.NewUserAgentPolicy("custom-user-agent")
 		perCallPolicy := &testPerCallPolicy{}
 		preRetryPolicy := &testPerRetryPolicy{}
 		transport := mockContext.HttpClient
 
-		builder := NewClientOptionsBuilder().
+		builder := azsdk.NewClientOptionsBuilder().
 			WithTransport(transport).
 			WithPerCallPolicy(userAgentPolicy).
 			WithPerCallPolicy(perCallPolicy).

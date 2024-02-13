@@ -234,7 +234,7 @@ var deploymentBytes string = `{
 		"operationId": "foo",
 		"properties": {
 		}
-	}]	
+	}]
 }`
 
 var testArmResponse string = `{

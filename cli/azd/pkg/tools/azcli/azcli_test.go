@@ -44,7 +44,7 @@ func TestAZCLIWithUserAgent(t *testing.T) {
 	var rawResponse *http.Response
 	ctx := runtime.WithCaptureResponse(*mockContext.Context, &rawResponse)
 
-	azCli := newAzCliFromMockContext(mockContext)
+	azCli := NewAzCliFromMockContext(mockContext)
 	// We don't care about the actual response or if an error occurred
 	// Any API call that leverages the Go SDK is fine
 	_, _ = azCli.GetResource(ctx, "SUBSCRIPTION_ID", "RESOURCE_ID", "API_VERSION")
@@ -79,7 +79,7 @@ func Test_AzSdk_User_Agent_Policy(t *testing.T) {
 	var rawResponse *http.Response
 	ctx := runtime.WithCaptureResponse(*mockContext.Context, &rawResponse)
 
-	azCli := newAzCliFromMockContext(mockContext)
+	azCli := NewAzCliFromMockContext(mockContext)
 	// We don't care about the actual response or if an error occurred
 	// Any API call that leverages the Go SDK is fine
 	_, _ = azCli.GetResource(ctx, "SUBSCRIPTION_ID", "RESOURCE_ID", "API_VERSION")
@@ -93,10 +93,7 @@ func Test_AzSdk_User_Agent_Policy(t *testing.T) {
 	require.Contains(t, userAgent[0], "azdev")
 }
 
-// NewAzCliFromMockContext creates a new instance of AzCli, configured to use the credential and pipeline from the
-// provided mock context.
-// TODO: this is duplicated in mocks.go... what refactor can be had here?
-func newAzCliFromMockContext(mockContext *mocks.MockContext) AzCli {
+func NewAzCliFromMockContext(mockContext *mocks.MockContext) AzCli {
 	// nolint:lll
 	deletedServicesClient, _ := armapimanagement.NewDeletedServicesClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 	serviceClient, _ := armapimanagement.NewServiceClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
@@ -109,6 +106,7 @@ func newAzCliFromMockContext(mockContext *mocks.MockContext) AzCli {
 	resourceGroupsClient, _ := armresources.NewResourceGroupsClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 	staticSitesClient, _ := armappservice.NewStaticSitesClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 	webAppsClient, _ := armappservice.NewWebAppsClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
+
 	zipDeployClient, _ := azsdk.NewZipDeployClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 	// nolint:end
 

@@ -14,6 +14,7 @@ type AzCliFunctionAppProperties struct {
 
 func (cli *azCli) GetFunctionAppProperties(
 	ctx context.Context,
+	// TODO: Remove SubscriptionId
 	subscriptionId string,
 	resourceGroup string,
 	appName string,
@@ -30,6 +31,7 @@ func (cli *azCli) GetFunctionAppProperties(
 
 func (cli *azCli) DeployFunctionAppUsingZipFile(
 	ctx context.Context,
+	// TODO: Remove SubscriptionId
 	subscriptionId string,
 	resourceGroup string,
 	appName string,

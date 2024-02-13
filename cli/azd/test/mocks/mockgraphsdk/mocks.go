@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/convert"
@@ -14,15 +13,12 @@ import (
 )
 
 func CreateGraphClient(mockContext *mocks.MockContext) (*graphsdk.GraphClient, error) {
-	clientOptions := CreateDefaultClientOptions(mockContext)
-	clientOptions.Retry.RetryDelay = -1
-	return graphsdk.NewGraphClient(mockContext.Credentials, clientOptions)
-}
-
-func CreateDefaultClientOptions(mockContext *mocks.MockContext) *azcore.ClientOptions {
-	return azsdk.NewClientOptionsBuilder().
+	clientOptions := azsdk.NewClientOptionsBuilder().
 		WithTransport(mockContext.HttpClient).
 		BuildCoreClientOptions()
+
+	clientOptions.Retry.RetryDelay = -1
+	return graphsdk.NewGraphClient(mockContext.Credentials, clientOptions)
 }
 
 func RegisterApplicationListMock(mockContext *mocks.MockContext, statusCode int, applications []graphsdk.Application) {

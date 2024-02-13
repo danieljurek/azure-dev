@@ -15,7 +15,7 @@ import (
 func Test_GetCognitiveAccount(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		mockContext := mocks.NewMockContext(context.Background())
-		azCli := newAzCliFromMockContext(mockContext)
+		azCli := NewAzCliFromMockContext(mockContext)
 
 		expectedName := "ACCOUNT_NAME"
 		mockContext.HttpClient.When(func(request *http.Request) bool {
@@ -43,7 +43,7 @@ func Test_GetCognitiveAccount(t *testing.T) {
 func Test_PurgeCognitiveAccount(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		mockContext := mocks.NewMockContext(context.Background())
-		azCli := newAzCliFromMockContext(mockContext)
+		azCli := NewAzCliFromMockContext(mockContext)
 		mockContext.HttpClient.When(func(request *http.Request) bool {
 			return request.Method == http.MethodDelete &&
 				strings.Contains(request.URL.Path, "/resourceGroups/RESOURCE_GROUP_ID/deletedAccounts/ACCOUNT_NAME")

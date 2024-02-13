@@ -17,6 +17,27 @@ import (
 	"github.com/azure/azure-dev/cli/azd/test/mocks/mockaccount"
 )
 
+func NewDeploymentOperationsServiceFromMockContext(
+	mockContext *mocks.MockContext) azapi.DeploymentOperations {
+	client, _ := armresources.NewDeploymentOperationsClient(
+		"SUBSCRIPTION_ID", // TODO: this probably needs to be mocked
+		mockContext.Credentials,
+		mockContext.ArmClientOptions,
+	)
+
+	return azapi.NewDeploymentOperations(client)
+}
+
+func NewDeploymentsServiceFromMockContext(
+	mockContext *mocks.MockContext) azapi.Deployments {
+	client, _ := armresources.NewDeploymentsClient(
+		"SUBSCRIPTION_ID", // TODO: this probably needs to be mocked
+		mockContext.Credentials,
+		mockContext.ArmClientOptions,
+	)
+	return azapi.NewDeployments(client)
+}
+
 // NewAzCliFromMockContext creates a new instance of AzCli, configured to use the credential and pipeline from the
 // provided mock context.
 func NewAzCliFromMockContext(mockContext *mocks.MockContext) azcli.AzCli {
@@ -32,6 +53,7 @@ func NewAzCliFromMockContext(mockContext *mocks.MockContext) azcli.AzCli {
 	resourceGroupsClient, _ := armresources.NewResourceGroupsClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 	staticSitesClient, _ := armappservice.NewStaticSitesClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 	webAppsClient, _ := armappservice.NewWebAppsClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
+
 	zipDeployClient, _ := azsdk.NewZipDeployClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 	// nolint:end
 
@@ -54,25 +76,4 @@ func NewAzCliFromMockContext(mockContext *mocks.MockContext) azcli.AzCli {
 		webAppsClient,
 		zipDeployClient,
 	)
-}
-
-func NewDeploymentOperationsServiceFromMockContext(
-	mockContext *mocks.MockContext) azapi.DeploymentOperations {
-	client, _ := armresources.NewDeploymentOperationsClient(
-		"SUBSCRIPTION_ID", // TODO: this probably needs to be mocked
-		mockContext.Credentials,
-		mockContext.ArmClientOptions,
-	)
-
-	return azapi.NewDeploymentOperations(client)
-}
-
-func NewDeploymentsServiceFromMockContext(
-	mockContext *mocks.MockContext) azapi.Deployments {
-	client, _ := armresources.NewDeploymentsClient(
-		"SUBSCRIPTION_ID", // TODO: this probably needs to be mocked
-		mockContext.Credentials,
-		mockContext.ArmClientOptions,
-	)
-	return azapi.NewDeployments(client)
 }

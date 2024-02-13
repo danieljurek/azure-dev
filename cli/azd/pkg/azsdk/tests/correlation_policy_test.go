@@ -1,4 +1,4 @@
-package azsdk
+package azsdktests
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/convert"
 	"github.com/azure/azure-dev/cli/azd/test/mocks"
 	"github.com/azure/azure-dev/cli/azd/test/mocks/mockhttp"
@@ -40,45 +41,45 @@ func Test_simpleCorrelationPolicy_Do(t *testing.T) {
 			name:                  "WithTraceId",
 			ctx:                   trace.ContextWithSpanContext(context.Background(), trace.SpanContext{}.WithTraceID(traceId)),
 			expect:                convert.RefOf(traceId.String()),
-			headerName:            cMsCorrelationIdHeader,
-			correlationPolicyFunc: NewMsCorrelationPolicy,
+			headerName:            azsdk.MsCorrelationIdHeader,
+			correlationPolicyFunc: azsdk.NewMsCorrelationPolicy,
 		},
 		{
 			name: "WithInvalidTraceId",
 			// nolint:lll
 			ctx:                   trace.ContextWithSpanContext(context.Background(), trace.SpanContext{}.WithTraceID(invalidTraceId)),
 			expect:                convert.RefOf(""),
-			headerName:            cMsCorrelationIdHeader,
-			correlationPolicyFunc: NewMsCorrelationPolicy,
+			headerName:            azsdk.MsCorrelationIdHeader,
+			correlationPolicyFunc: azsdk.NewMsCorrelationPolicy,
 		},
 		{
 			name:                  "WithoutTraceId",
 			ctx:                   context.Background(),
 			expect:                nil,
-			headerName:            cMsCorrelationIdHeader,
-			correlationPolicyFunc: NewMsCorrelationPolicy,
+			headerName:            azsdk.MsCorrelationIdHeader,
+			correlationPolicyFunc: azsdk.NewMsCorrelationPolicy,
 		},
 		{
 			name:                  "WithTraceId",
 			ctx:                   trace.ContextWithSpanContext(context.Background(), trace.SpanContext{}.WithTraceID(traceId)),
 			expect:                convert.RefOf(traceId.String()),
-			headerName:            cMsGraphCorrelationIdHeader,
-			correlationPolicyFunc: NewMsGraphCorrelationPolicy,
+			headerName:            azsdk.MsGraphCorrelationIdHeader,
+			correlationPolicyFunc: azsdk.NewMsGraphCorrelationPolicy,
 		},
 		{
 			name: "WithInvalidTraceId",
 			// nolint:lll
 			ctx:                   trace.ContextWithSpanContext(context.Background(), trace.SpanContext{}.WithTraceID(invalidTraceId)),
 			expect:                convert.RefOf(""),
-			headerName:            cMsGraphCorrelationIdHeader,
-			correlationPolicyFunc: NewMsGraphCorrelationPolicy,
+			headerName:            azsdk.MsGraphCorrelationIdHeader,
+			correlationPolicyFunc: azsdk.NewMsGraphCorrelationPolicy,
 		},
 		{
 			name:                  "WithoutTraceId",
 			ctx:                   context.Background(),
 			expect:                nil,
-			headerName:            cMsGraphCorrelationIdHeader,
-			correlationPolicyFunc: NewMsGraphCorrelationPolicy,
+			headerName:            azsdk.MsGraphCorrelationIdHeader,
+			correlationPolicyFunc: azsdk.NewMsGraphCorrelationPolicy,
 		},
 	}
 	for _, tt := range tests {
@@ -90,7 +91,7 @@ func Test_simpleCorrelationPolicy_Do(t *testing.T) {
 				return mocks.CreateEmptyHttpResponse(request, http.StatusOK)
 			})
 
-			clientOptions := NewClientOptionsBuilder().
+			clientOptions := azsdk.NewClientOptionsBuilder().
 				WithTransport(httpClient).
 				WithPerCallPolicy(tt.correlationPolicyFunc()).
 				BuildArmClientOptions()
