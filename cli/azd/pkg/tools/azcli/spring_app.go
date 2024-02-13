@@ -10,9 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appplatform/armappplatform/v2"
 	"github.com/Azure/azure-storage-file-go/azfile"
-	azdinternal "github.com/azure/azure-dev/cli/azd/internal"
-	"github.com/azure/azure-dev/cli/azd/pkg/account"
-	"github.com/azure/azure-dev/cli/azd/pkg/httputil"
 )
 
 // SpringService provides artifacts upload/deploy and query to Azure Spring Apps (ASA)
@@ -20,7 +17,6 @@ type SpringService interface {
 	// Get Spring app properties
 	GetSpringAppProperties(
 		ctx context.Context,
-		subscriptionId string,
 		resourceGroupName string,
 		instanceName string,
 		appName string,
@@ -28,7 +24,6 @@ type SpringService interface {
 	// Deploy jar artifact to ASA app deployment
 	DeploySpringAppArtifact(
 		ctx context.Context,
-		subscriptionId string,
 		resourceGroup string,
 		instanceName string,
 		appName string,
@@ -38,7 +33,6 @@ type SpringService interface {
 	// Upload jar artifact to ASA app Storage File
 	UploadSpringArtifact(
 		ctx context.Context,
-		subscriptionId string,
 		resourceGroup string,
 		instanceName string,
 		appName string,
@@ -47,7 +41,6 @@ type SpringService interface {
 	// Get Spring app deployment
 	GetSpringAppDeployment(
 		ctx context.Context,
-		subscriptionId string,
 		resourceGroupName string,
 		instanceName string,
 		appName string,
@@ -56,20 +49,18 @@ type SpringService interface {
 }
 
 type springService struct {
-	credentialProvider account.SubscriptionCredentialProvider
-	httpClient         httputil.HttpClient
-	userAgent          string
+	appsClient        *armappplatform.AppsClient
+	deploymentsClient *armappplatform.DeploymentsClient
 }
 
 // Creates a new instance of the NewSpringService
 func NewSpringService(
-	credentialProvider account.SubscriptionCredentialProvider,
-	httpClient httputil.HttpClient,
+	appsClient *armappplatform.AppsClient,
+	deploymentsClient *armappplatform.DeploymentsClient,
 ) SpringService {
 	return &springService{
-		credentialProvider: credentialProvider,
-		httpClient:         httpClient,
-		userAgent:          azdinternal.UserAgent(),
+		appsClient:        appsClient,
+		deploymentsClient: deploymentsClient,
 	}
 }
 
@@ -79,14 +70,9 @@ type SpringAppProperties struct {
 
 func (ss *springService) GetSpringAppProperties(
 	ctx context.Context,
-	subscriptionId, resourceGroup, instanceName, appName string,
+	resourceGroup, instanceName, appName string,
 ) (*SpringAppProperties, error) {
-	client, err := ss.createSpringAppClient(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
-	springApp, err := client.Get(ctx, resourceGroup, instanceName, appName, nil)
+	springApp, err := ss.appsClient.Get(ctx, resourceGroup, instanceName, appName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed retrieving spring app properties: %w", err)
 	}
@@ -107,7 +93,7 @@ func (ss *springService) GetSpringAppProperties(
 
 func (ss *springService) UploadSpringArtifact(
 	ctx context.Context,
-	subscriptionId, resourceGroup, instanceName, appName, artifactPath string,
+	resourceGroup, instanceName, appName, artifactPath string,
 ) (*string, error) {
 	file, err := os.Open(artifactPath)
 
@@ -119,11 +105,7 @@ func (ss *springService) UploadSpringArtifact(
 	}
 	defer file.Close()
 
-	springClient, err := ss.createSpringAppClient(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-	storageInfo, err := springClient.GetResourceUploadURL(ctx, resourceGroup, instanceName, appName, nil)
+	storageInfo, err := ss.appsClient.GetResourceUploadURL(ctx, resourceGroup, instanceName, appName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get resource upload URL: %w", err)
 	}
@@ -151,29 +133,24 @@ func (ss *springService) UploadSpringArtifact(
 
 func (ss *springService) DeploySpringAppArtifact(
 	ctx context.Context,
-	subscriptionId string,
 	resourceGroup string,
 	instanceName string,
 	appName string,
 	relativePath string,
 	deploymentName string,
 ) (*string, error) {
-	deploymentClient, err := ss.createSpringAppDeploymentClient(ctx, subscriptionId)
+	_, err := ss.createOrUpdateDeployment(
+		ctx,
+		resourceGroup,
+		instanceName,
+		appName,
+		deploymentName,
+		relativePath,
+	)
 	if err != nil {
 		return nil, err
 	}
-
-	springClient, err := ss.createSpringAppClient(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = ss.createOrUpdateDeployment(deploymentClient, ctx, resourceGroup, instanceName, appName,
-		deploymentName, relativePath)
-	if err != nil {
-		return nil, err
-	}
-	resName, err := ss.activeDeployment(springClient, ctx, resourceGroup, instanceName, appName, deploymentName)
+	resName, err := ss.activeDeployment(ctx, resourceGroup, instanceName, appName, deploymentName)
 	if err != nil {
 		return nil, err
 	}
@@ -183,18 +160,12 @@ func (ss *springService) DeploySpringAppArtifact(
 
 func (ss *springService) GetSpringAppDeployment(
 	ctx context.Context,
-	subscriptionId string,
 	resourceGroupName string,
 	instanceName string,
 	appName string,
 	deploymentName string,
 ) (*string, error) {
-	client, err := ss.createSpringAppDeploymentClient(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.Get(ctx, resourceGroupName, instanceName, appName, deploymentName, nil)
+	resp, err := ss.deploymentsClient.Get(ctx, resourceGroupName, instanceName, appName, deploymentName, nil)
 
 	if err != nil {
 		return nil, err
@@ -203,44 +174,7 @@ func (ss *springService) GetSpringAppDeployment(
 	return resp.Name, nil
 }
 
-func (ss *springService) createSpringAppClient(
-	ctx context.Context,
-	subscriptionId string,
-) (*armappplatform.AppsClient, error) {
-	credential, err := ss.credentialProvider.CredentialForSubscription(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
-	options := clientOptionsBuilder(ss.httpClient, ss.userAgent).BuildArmClientOptions()
-	client, err := armappplatform.NewAppsClient(subscriptionId, credential, options)
-	if err != nil {
-		return nil, fmt.Errorf("creating SpringApp client: %w", err)
-	}
-
-	return client, nil
-}
-
-func (ss *springService) createSpringAppDeploymentClient(
-	ctx context.Context,
-	subscriptionId string,
-) (*armappplatform.DeploymentsClient, error) {
-	credential, err := ss.credentialProvider.CredentialForSubscription(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
-	options := clientOptionsBuilder(ss.httpClient, ss.userAgent).BuildArmClientOptions()
-	client, err := armappplatform.NewDeploymentsClient(subscriptionId, credential, options)
-	if err != nil {
-		return nil, fmt.Errorf("creating SpringAppDeployment client: %w", err)
-	}
-
-	return client, nil
-}
-
 func (ss *springService) createOrUpdateDeployment(
-	deploymentClient *armappplatform.DeploymentsClient,
 	ctx context.Context,
 	resourceGroup string,
 	instanceName string,
@@ -248,7 +182,7 @@ func (ss *springService) createOrUpdateDeployment(
 	deploymentName string,
 	relativePath string,
 ) (*string, error) {
-	poller, err := deploymentClient.BeginCreateOrUpdate(ctx, resourceGroup, instanceName, appName, deploymentName,
+	poller, err := ss.deploymentsClient.BeginCreateOrUpdate(ctx, resourceGroup, instanceName, appName, deploymentName,
 		armappplatform.DeploymentResource{
 			Properties: &armappplatform.DeploymentResourceProperties{
 				Source: &armappplatform.JarUploadedUserSourceInfo{
@@ -270,14 +204,13 @@ func (ss *springService) createOrUpdateDeployment(
 }
 
 func (ss *springService) activeDeployment(
-	springClient *armappplatform.AppsClient,
 	ctx context.Context,
 	resourceGroup string,
 	instanceName string,
 	appName string,
 	deploymentName string,
 ) (*string, error) {
-	poller, err := springClient.BeginSetActiveDeployments(ctx, resourceGroup, instanceName, appName,
+	poller, err := ss.appsClient.BeginSetActiveDeployments(ctx, resourceGroup, instanceName, appName,
 		armappplatform.ActiveDeploymentCollection{
 			ActiveDeploymentNames: []*string{
 				to.Ptr(deploymentName),

@@ -50,6 +50,7 @@ type containerRegistryService struct {
 	docker             docker.Docker
 	httpClient         httputil.HttpClient
 	userAgent          string
+	registriesClient   *armcontainerregistry.RegistriesClient
 }
 
 // Creates a new instance of the ContainerRegistryService
@@ -57,12 +58,14 @@ func NewContainerRegistryService(
 	credentialProvider account.SubscriptionCredentialProvider,
 	httpClient httputil.HttpClient,
 	docker docker.Docker,
+	registriesClient *armcontainerregistry.RegistriesClient,
 ) ContainerRegistryService {
 	return &containerRegistryService{
 		credentialProvider: credentialProvider,
 		docker:             docker,
 		httpClient:         httpClient,
 		userAgent:          internal.UserAgent(),
+		registriesClient:   registriesClient,
 	}
 }
 
@@ -71,13 +74,8 @@ func (crs *containerRegistryService) GetContainerRegistries(
 	ctx context.Context,
 	subscriptionId string,
 ) ([]*armcontainerregistry.Registry, error) {
-	client, err := crs.createRegistriesClient(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
 	results := []*armcontainerregistry.Registry{}
-	pager := client.NewListPager(nil)
+	pager := crs.registriesClient.NewListPager(nil)
 
 	for pager.More() {
 		page, err := pager.NextPage(ctx)
@@ -160,11 +158,6 @@ func (crs *containerRegistryService) getAdminUserCredentials(
 	subscriptionId string,
 	loginServer string,
 ) (*DockerCredentials, error) {
-	client, err := crs.createRegistriesClient(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
 	parts := strings.Split(loginServer, ".")
 	registryName := parts[0]
 
@@ -180,7 +173,7 @@ func (crs *containerRegistryService) getAdminUserCredentials(
 	}
 
 	// Retrieve the registry credentials
-	credResponse, err := client.ListCredentials(ctx, resourceGroup, registryName, nil)
+	credResponse, err := crs.registriesClient.ListCredentials(ctx, resourceGroup, registryName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getting container registry credentials: %w", err)
 	}
@@ -223,24 +216,6 @@ func (crs *containerRegistryService) findContainerRegistryByName(
 	return registry, *resourceGroup, nil
 }
 
-func (crs *containerRegistryService) createRegistriesClient(
-	ctx context.Context,
-	subscriptionId string,
-) (*armcontainerregistry.RegistriesClient, error) {
-	credential, err := crs.credentialProvider.CredentialForSubscription(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
-	options := clientOptionsBuilder(crs.httpClient, crs.userAgent).BuildArmClientOptions()
-	client, err := armcontainerregistry.NewRegistriesClient(subscriptionId, credential, options)
-	if err != nil {
-		return nil, fmt.Errorf("creating registries client: %w", err)
-	}
-
-	return client, nil
-}
-
 // Exchanges an AAD token for an ACR refresh token
 func (crs *containerRegistryService) getAcrToken(
 	ctx context.Context,
@@ -258,6 +233,7 @@ func (crs *containerRegistryService) getAcrToken(
 	}
 
 	// Implementation based on docs @ https://azure.github.io/acr/AAD-OAuth.html
+	// TODO: This is likely a legitimate use of clientOptionsBuilder. IT IS! Inject the client options and let's be on our way.
 	options := clientOptionsBuilder(crs.httpClient, crs.userAgent).BuildCoreClientOptions()
 	pipeline := azruntime.NewPipeline("azd-acr", internal.Version, azruntime.PipelineOptions{}, options)
 

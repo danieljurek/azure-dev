@@ -13,9 +13,12 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appconfiguration/armappconfiguration"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appcontainers/armappcontainers/v2"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appplatform/armappplatform/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appservice/armappservice"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cognitiveservices/armcognitiveservices"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerregistry/armcontainerregistry"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/keyvault/armkeyvault"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
@@ -36,6 +39,7 @@ import (
 	"github.com/azure/azure-dev/cli/azd/pkg/environment"
 	"github.com/azure/azure-dev/cli/azd/pkg/environment/azdcontext"
 	"github.com/azure/azure-dev/cli/azd/pkg/exec"
+	"github.com/azure/azure-dev/cli/azd/pkg/graphsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/httputil"
 	"github.com/azure/azure-dev/cli/azd/pkg/infra"
 	"github.com/azure/azure-dev/cli/azd/pkg/infra/provisioning"
@@ -589,23 +593,98 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 		return armresources.NewResourceGroupsClient(string(subscriptionId), credential, options)
 	})
 
-	// Create a map of client types to their respective factory methods
-	armClientMap := map[interface{}]func(string, account.TokenCredentialForSubscription, *arm.ClientOptions) any{
-		(*azsdk.ZipDeployClient)(nil): azsdk.NewZipDeployClient,
-		(*armappservice.WebAppsClient)(nil): armappservice.NewWebAppsClient,
-		(*armappservice.StaticSitesClient)(nil): armappservice.NewStaticSitesClient,
-	}
+	container.MustRegisterScoped(func(
+		subscriptionId environment.SubscriptionId,
+		credential account.TokenCredentialForSubscription,
+		options *arm.ClientOptions,
+	) (*armappservice.StaticSitesClient, error) {
+		return armappservice.NewStaticSitesClient(string(subscriptionId), credential, options)
+	})
 
-	// Register the client factories
-	for clientType, factory := range armClientMap {
-		container.MustRegisterScoped(func(
-			subscriptionId environment.SubscriptionId,
-			credential account.TokenCredentialForSubscription,
-			options *arm.ClientOptions,
-		) (clientType, error) {
-			return factory(string(subscriptionId), credential, options)
-		}
-	}
+	container.MustRegisterScoped(func(
+		subscriptionId environment.SubscriptionId,
+		credential account.TokenCredentialForSubscription,
+		options *arm.ClientOptions,
+	) (*armappservice.WebAppsClient, error) {
+		return armappservice.NewWebAppsClient(string(subscriptionId), credential, options)
+	})
+
+	container.MustRegisterScoped(func(
+		subscriptionId environment.SubscriptionId,
+		credential account.TokenCredentialForSubscription,
+		options *arm.ClientOptions,
+	) (*azsdk.ZipDeployClient, error) {
+		return azsdk.NewZipDeployClient(string(subscriptionId), credential, options)
+	})
+
+	container.MustRegisterScoped(func(
+		subscriptionId environment.SubscriptionId,
+		credential account.TokenCredentialForSubscription,
+		options *arm.ClientOptions,
+	) (*armcontainerregistry.RegistriesClient, error) {
+		return armcontainerregistry.NewRegistriesClient(string(subscriptionId), credential, options)
+	})
+
+	container.MustRegisterScoped(func(
+		subscriptionId environment.SubscriptionId,
+		credential account.TokenCredentialForSubscription,
+		options *arm.ClientOptions,
+	) (*armcontainerservice.ManagedClustersClient, error) {
+		return armcontainerservice.NewManagedClustersClient(string(subscriptionId), credential, options)
+	})
+
+	// This should be done using go generics
+	// armClients := []func(environment.SubscriptionId,
+	// 	account.TokenCredentialForSubscription,
+	// 	*arm.ClientOptions) (any, error){}
+
+	// factory := armcontainerservice.NewManagedClustersClient
+	// f := func(environment.SubscriptionId,
+	// 	account.TokenCredentialForSubscription,
+	// 	*arm.ClientOptions,
+	// ) (any, error) {
+	// 	return factory(string(subscriptionId), credential, options)
+	// }
+	// container.MustRegisterScoped(f)
+
+	container.MustRegisterScoped(func(
+		subscriptionId environment.SubscriptionId,
+		credential account.TokenCredentialForSubscription,
+		options *arm.ClientOptions,
+	) (*armappplatform.AppsClient, error) {
+		return armappplatform.NewAppsClient(string(subscriptionId), credential, options)
+	})
+
+	container.MustRegisterScoped(func(
+		subscriptionId environment.SubscriptionId,
+		credential account.TokenCredentialForSubscription,
+		options *arm.ClientOptions,
+	) (*armappplatform.DeploymentsClient, error) {
+		return armappplatform.NewDeploymentsClient(string(subscriptionId), credential, options)
+	})
+
+	container.MustRegisterScoped(func(
+		clientOptionsBuilderFactory azsdk.ClientOptionsBuilderFactory,
+		credential azcore.TokenCredential,
+	) (*graphsdk.GraphClient, error) {
+		options := clientOptionsBuilderFactory.ClientOptionsBuilder().
+			WithPerCallPolicy(azsdk.NewMsGraphCorrelationPolicy()).
+			BuildCoreClientOptions()
+		return graphsdk.NewGraphClient(credential, options)
+	})
+
+	// For secrets: do a factory function, and then add a TODO about caching
+	// and make a type alias so that we can inject it by type.
+	// container.MustRegisterScoped(func() func(string) (*azsecrets.Client, error) {
+	// 	return
+	// })
+
+	// TODO: Use the go linter to check tests
+
+	// golangci-lint run --timeout 5m
+
+	// nolint:lll
+	// golines . -w -m 125 && golangci-lint run --timeout 5m && cspell lint '**/*.go' --config ./.vscode/cspell.yaml --root . --no-progress
 
 	// BOTTOM OF CLIENT REGISTRATIONS
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -686,11 +765,79 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 		rootOptions *internal.GlobalCommandOptions,
 		credentialProvider account.SubscriptionCredentialProvider,
 		httpClient httputil.HttpClient,
-	) azcli.AzCli {
-		return azcli.NewAzCli(credentialProvider, httpClient, azcli.NewAzCliArgs{
-			EnableDebug:     rootOptions.EnableDebugLogging,
-			EnableTelemetry: rootOptions.EnableTelemetry,
-		})
+		serviceLocator ioc.ServiceLocator,
+	) (azcli.AzCli, error) {
+
+		var apimDeletedClient *armapimanagement.DeletedServicesClient
+		var apimServiceClient *armapimanagement.ServiceClient
+		var appConfigStoresClient *armappconfiguration.ConfigurationStoresClient
+		var cognitiveServicesAccountsClient *armcognitiveservices.AccountsClient
+		var cognitiveServicesDeletedAccountsClient *armcognitiveservices.DeletedAccountsClient
+		var keyVaultsClient *armkeyvault.VaultsClient
+		var managedHsmsClient *armkeyvault.ManagedHsmsClient
+		var resourcesClient *armresources.Client
+		var resourceGroupsClient *armresources.ResourceGroupsClient
+		var staticSitesClient *armappservice.StaticSitesClient
+		var webAppsClient *armappservice.WebAppsClient
+		var zipDeployClient *azsdk.ZipDeployClient
+
+		if err := serviceLocator.Resolve(&apimDeletedClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&apimServiceClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&appConfigStoresClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&cognitiveServicesAccountsClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&cognitiveServicesDeletedAccountsClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&keyVaultsClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&managedHsmsClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&resourcesClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&resourceGroupsClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&staticSitesClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&webAppsClient); err != nil {
+			return nil, err
+		}
+		if err := serviceLocator.Resolve(&zipDeployClient); err != nil {
+			return nil, err
+		}
+
+		return azcli.NewAzCli(
+			credentialProvider,
+			httpClient,
+			azcli.NewAzCliArgs{
+				EnableDebug:     rootOptions.EnableDebugLogging,
+				EnableTelemetry: rootOptions.EnableTelemetry,
+			},
+			apimDeletedClient,
+			apimServiceClient,
+			appConfigStoresClient,
+			cognitiveServicesAccountsClient,
+			cognitiveServicesDeletedAccountsClient,
+			keyVaultsClient,
+			managedHsmsClient,
+			resourcesClient,
+			resourceGroupsClient,
+			staticSitesClient,
+			webAppsClient,
+			zipDeployClient,
+		), nil
 	})
 	container.MustRegisterSingleton(azapi.NewDeployments)
 	container.MustRegisterSingleton(azapi.NewDeploymentOperations)

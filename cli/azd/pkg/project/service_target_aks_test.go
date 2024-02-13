@@ -569,8 +569,21 @@ func createAksServiceTarget(
 		On("GetTargetResource", *mockContext.Context, "SUBSCRIPTION_ID", serviceConfig).
 		Return(targetResource, nil)
 
-	managedClustersService := azcli.NewManagedClustersService(credentialProvider, mockContext.HttpClient)
-	containerRegistryService := azcli.NewContainerRegistryService(credentialProvider, mockContext.HttpClient, dockerCli)
+	// TODO: REFACTOR
+	managedClusterClient, _ := armcontainerservice.NewManagedClustersClient(
+		"SUBSCRIPTION_ID",
+		mockContext.Credentials,
+		mockContext.ArmClientOptions,
+	)
+
+	registriesClient, _ := armcontainerregistry.NewRegistriesClient(
+		"SUBSCRIPTION_ID",
+		mockContext.Credentials,
+		mockContext.ArmClientOptions,
+	)
+
+	managedClustersService := azcli.NewManagedClustersService(managedClusterClient)
+	containerRegistryService := azcli.NewContainerRegistryService(credentialProvider, mockContext.HttpClient, dockerCli, registriesClient)
 	containerHelper := NewContainerHelper(env, envManager, clock.NewMock(), containerRegistryService, dockerCli)
 
 	return NewAksTarget(

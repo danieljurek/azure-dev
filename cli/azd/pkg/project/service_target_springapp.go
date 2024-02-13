@@ -92,7 +92,6 @@ func (st *springAppTarget) Deploy(
 
 			_, err := st.springService.GetSpringAppDeployment(
 				ctx,
-				targetResource.SubscriptionId(),
 				targetResource.ResourceGroupName(),
 				targetResource.ResourceName(),
 				serviceConfig.Name,
@@ -124,7 +123,6 @@ func (st *springAppTarget) Deploy(
 
 			relativePath, err := st.springService.UploadSpringArtifact(
 				ctx,
-				targetResource.SubscriptionId(),
 				targetResource.ResourceGroupName(),
 				targetResource.ResourceName(),
 				serviceConfig.Name,
@@ -140,7 +138,6 @@ func (st *springAppTarget) Deploy(
 
 			res, err := st.springService.DeploySpringAppArtifact(
 				ctx,
-				targetResource.SubscriptionId(),
 				targetResource.ResourceGroupName(),
 				targetResource.ResourceName(),
 				serviceConfig.Name,
@@ -193,7 +190,6 @@ func (st *springAppTarget) Endpoints(
 ) ([]string, error) {
 	springAppProperties, err := st.springService.GetSpringAppProperties(
 		ctx,
-		targetResource.SubscriptionId(),
 		targetResource.ResourceGroupName(),
 		targetResource.ResourceName(),
 		serviceConfig.Name,

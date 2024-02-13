@@ -18,12 +18,7 @@ func (cli *azCli) GetFunctionAppProperties(
 	resourceGroup string,
 	appName string,
 ) (*AzCliFunctionAppProperties, error) {
-	client, err := cli.createWebAppsClient(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
-	webApp, err := client.Get(ctx, resourceGroup, appName, nil)
+	webApp, err := cli.webAppsClient.Get(ctx, resourceGroup, appName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed retrieving function app properties: %w", err)
 	}
@@ -40,12 +35,7 @@ func (cli *azCli) DeployFunctionAppUsingZipFile(
 	appName string,
 	deployZipFile io.Reader,
 ) (*string, error) {
-	client, err := cli.createZipDeployClient(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
-	response, err := client.Deploy(ctx, appName, deployZipFile)
+	response, err := cli.zipDeployClient.Deploy(ctx, appName, deployZipFile)
 	if err != nil {
 		return nil, err
 	}

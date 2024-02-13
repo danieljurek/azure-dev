@@ -6,7 +6,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/azure/azure-dev/cli/azd/internal"
 	"github.com/azure/azure-dev/cli/azd/pkg/alpha"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/config"
 	"github.com/azure/azure-dev/cli/azd/pkg/exec"
 	"github.com/azure/azure-dev/cli/azd/pkg/httputil"
@@ -40,11 +42,13 @@ func NewMockContext(ctx context.Context) *MockContext {
 	config := config.NewEmptyConfig()
 
 	coreClientOptions := &azcore.ClientOptions{
-		Transport: httpClient,
+		Transport:       httpClient,
+		PerCallPolicies: []policy.Policy{azsdk.NewUserAgentPolicy(internal.UserAgent())},
 	}
 	armClientOptions := &arm.ClientOptions{
 		ClientOptions: policy.ClientOptions{
-			Transport: httpClient,
+			Transport:       httpClient,
+			PerCallPolicies: []policy.Policy{azsdk.NewUserAgentPolicy(internal.UserAgent())},
 		},
 	}
 

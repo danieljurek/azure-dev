@@ -9,6 +9,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/graphsdk"
 	"github.com/azure/azure-dev/cli/azd/test/mocks"
 	"github.com/stretchr/testify/require"
@@ -27,11 +28,19 @@ func Test_GetUserAccessToken(t *testing.T) {
 	}
 
 	mockContext := mocks.NewMockContext(context.Background())
+
+	graphClient, _ := graphsdk.NewGraphClient(
+		&mockCredential,
+		azsdk.NewClientOptionsBuilderFactory(mockContext.HttpClient, "azd").
+			ClientOptionsBuilder().
+			BuildCoreClientOptions(),
+	)
+
 	userProfile := NewUserProfileService(&mocks.MockMultiTenantCredentialProvider{
 		TokenMap: map[string]mocks.MockCredentials{
 			"": mockCredential,
 		},
-	}, mockContext.HttpClient)
+	}, graphClient)
 
 	actual, err := userProfile.GetAccessToken(*mockContext.Context, "")
 	require.NoError(t, err)
@@ -52,7 +61,14 @@ func Test_GetSignedInUserId(t *testing.T) {
 		mockContext := mocks.NewMockContext(context.Background())
 		registerGetMeGraphMock(mockContext, http.StatusOK, &mockUserProfile)
 
-		userProfile := NewUserProfileService(&mocks.MockMultiTenantCredentialProvider{}, mockContext.HttpClient)
+		graphClient, _ := graphsdk.NewGraphClient(
+			mockContext.Credentials,
+			azsdk.NewClientOptionsBuilderFactory(mockContext.HttpClient, "azd").
+				ClientOptionsBuilder().
+				BuildCoreClientOptions(),
+		)
+
+		userProfile := NewUserProfileService(&mocks.MockMultiTenantCredentialProvider{}, graphClient)
 
 		userId, err := userProfile.GetSignedInUserId(*mockContext.Context, "")
 		require.NoError(t, err)
@@ -63,7 +79,14 @@ func Test_GetSignedInUserId(t *testing.T) {
 		mockContext := mocks.NewMockContext(context.Background())
 		registerGetMeGraphMock(mockContext, http.StatusBadRequest, nil)
 
-		userProfile := NewUserProfileService(&mocks.MockMultiTenantCredentialProvider{}, mockContext.HttpClient)
+		graphClient, _ := graphsdk.NewGraphClient(
+			mockContext.Credentials,
+			azsdk.NewClientOptionsBuilderFactory(mockContext.HttpClient, "azd").
+				ClientOptionsBuilder().
+				BuildCoreClientOptions(),
+		)
+
+		userProfile := NewUserProfileService(&mocks.MockMultiTenantCredentialProvider{}, graphClient)
 
 		userId, err := userProfile.GetSignedInUserId(*mockContext.Context, "")
 		require.Error(t, err)

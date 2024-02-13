@@ -29,10 +29,17 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appconfiguration/armappconfiguration"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appservice/armappservice"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cognitiveservices/armcognitiveservices"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/keyvault/armkeyvault"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/azure/azure-dev/cli/azd/internal/telemetry"
 	"github.com/azure/azure-dev/cli/azd/internal/tracing"
+	"github.com/azure/azure-dev/cli/azd/pkg/account"
 	"github.com/azure/azure-dev/cli/azd/pkg/azapi"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/config"
 	"github.com/azure/azure-dev/cli/azd/pkg/environment"
 	"github.com/azure/azure-dev/cli/azd/pkg/environment/azdcontext"
@@ -153,21 +160,25 @@ func Test_CLI_InfraCreateAndDelete(t *testing.T) {
 		client = http.DefaultClient
 	}
 
-	azCli := azcli.NewAzCli(mockaccount.SubscriptionCredentialProviderFunc(
-		func(_ context.Context, _ string) (azcore.TokenCredential, error) {
-			return cred, nil
-		}),
-		client,
-		azcli.NewAzCliArgs{})
+	options := &arm.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: client,
+		},
+	}
+	azCli := newAzCliInstance(
+		mockaccount.SubscriptionCredentialProviderFunc(
+			func(_ context.Context, _ string) (azcore.TokenCredential, error) {
+				return cred, nil
+			}),
+		cred,
+		azcli.NewAzCliArgs{},
+		options,
+	)
 
 	deploymentOperationsClient, err := armresources.NewDeploymentOperationsClient(
 		env.GetSubscriptionId(),
 		cred,
-		&arm.ClientOptions{
-			ClientOptions: policy.ClientOptions{
-				Transport: client,
-			},
-		},
+		options,
 	)
 	require.NoError(t, err)
 	deploymentOperations := azapi.NewDeploymentOperations(deploymentOperationsClient)
@@ -367,21 +378,26 @@ func Test_CLI_InfraCreateAndDeleteUpperCase(t *testing.T) {
 		t.Fatal("could not create credential")
 	}
 
-	azCli := azcli.NewAzCli(mockaccount.SubscriptionCredentialProviderFunc(
-		func(_ context.Context, _ string) (azcore.TokenCredential, error) {
-			return cred, nil
-		}),
-		client,
-		azcli.NewAzCliArgs{})
+	options := &arm.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Transport: client,
+		},
+	}
+
+	azCli := newAzCliInstance(
+		mockaccount.SubscriptionCredentialProviderFunc(
+			func(_ context.Context, _ string) (azcore.TokenCredential, error) {
+				return cred, nil
+			}),
+		cred,
+		azcli.NewAzCliArgs{},
+		options,
+	)
 
 	deploymentOperationsClient, err := armresources.NewDeploymentOperationsClient(
 		env.GetSubscriptionId(),
 		cred,
-		&arm.ClientOptions{
-			ClientOptions: policy.ClientOptions{
-				Transport: client,
-			},
-		},
+		options,
 	)
 	require.NoError(t, err)
 	deploymentOperations := azapi.NewDeploymentOperations(deploymentOperationsClient)
@@ -892,4 +908,44 @@ func envFromAzdRoot(ctx context.Context, azdRootDir string, envName string) (*en
 	azdCtx := azdcontext.NewAzdContextWithDirectory(azdRootDir)
 	localDataStore := environment.NewLocalFileDataStore(azdCtx, config.NewFileConfigManager(config.NewManager()))
 	return localDataStore.Get(ctx, envName)
+}
+
+func newAzCliInstance(
+	credProvider account.SubscriptionCredentialProvider,
+	cred azcore.TokenCredential,
+	args azcli.NewAzCliArgs,
+	armClientOptions *arm.ClientOptions,
+) azcli.AzCli {
+	deletedServicesClient, _ := armapimanagement.NewDeletedServicesClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	serviceClient, _ := armapimanagement.NewServiceClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	configurationStoresClient, _ := armappconfiguration.NewConfigurationStoresClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	accountsClient, _ := armcognitiveservices.NewAccountsClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	deletedAccountsClient, _ := armcognitiveservices.NewDeletedAccountsClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	vaultsClient, _ := armkeyvault.NewVaultsClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	managedHsmsClient, _ := armkeyvault.NewManagedHsmsClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	client, _ := armresources.NewClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	resourceGroupsClient, _ := armresources.NewResourceGroupsClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	staticSitesClient, _ := armappservice.NewStaticSitesClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	webAppsClient, _ := armappservice.NewWebAppsClient("SUBSCRIPTION_ID", cred, armClientOptions)
+	zipDeployClient, _ := azsdk.NewZipDeployClient("SUBSCRIPTION_ID", cred, armClientOptions)
+
+	return azcli.NewAzCli(
+		credProvider,
+		// TODO: refactor
+		armClientOptions.ClientOptions.Transport,
+		args,
+		deletedServicesClient,
+		serviceClient,
+		configurationStoresClient,
+		accountsClient,
+		deletedAccountsClient,
+		vaultsClient,
+		managedHsmsClient,
+		client,
+		resourceGroupsClient,
+		staticSitesClient,
+		webAppsClient,
+		zipDeployClient,
+	)
+
 }

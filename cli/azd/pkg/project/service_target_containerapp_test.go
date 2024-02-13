@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appcontainers/armappcontainers/v2"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerregistry/armcontainerregistry"
 	"github.com/azure/azure-dev/cli/azd/pkg/containerapps"
 	"github.com/azure/azure-dev/cli/azd/pkg/convert"
 	"github.com/azure/azure-dev/cli/azd/pkg/environment"
@@ -139,7 +140,19 @@ func createContainerAppServiceTarget(
 		mockazsdk.MockContainerAppsClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions),
 		mockazsdk.MockContainerAppsRevisionsClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions),
 	)
-	containerRegistryService := azcli.NewContainerRegistryService(credentialProvider, mockContext.HttpClient, dockerCli)
+
+	containerRegistryClient, _ := armcontainerregistry.NewRegistriesClient(
+		"SUBSCRIPTION_ID",
+		mockContext.Credentials,
+		mockContext.ArmClientOptions,
+	)
+
+	containerRegistryService := azcli.NewContainerRegistryService(
+		credentialProvider,
+		mockContext.HttpClient,
+		dockerCli,
+		containerRegistryClient,
+	)
 	containerHelper := NewContainerHelper(env, envManager, clock.NewMock(), containerRegistryService, dockerCli)
 	azCli := mockazcli.NewAzCliFromMockContext(mockContext)
 	depOpService := mockazcli.NewDeploymentOperationsServiceFromMockContext(mockContext)
