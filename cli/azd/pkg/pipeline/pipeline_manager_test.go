@@ -14,6 +14,7 @@ import (
 	"github.com/azure/azure-dev/cli/azd/pkg/account"
 	"github.com/azure/azure-dev/cli/azd/pkg/environment"
 	"github.com/azure/azure-dev/cli/azd/pkg/environment/azdcontext"
+	"github.com/azure/azure-dev/cli/azd/pkg/graphsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/ioc"
 	"github.com/azure/azure-dev/cli/azd/pkg/osutil"
 	"github.com/azure/azure-dev/cli/azd/pkg/project"
@@ -415,12 +416,16 @@ func createPipelineManager(
 		"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 	require.NoError(t, err)
 
-	adService := azcli.NewAdService(
-		mockContext.SubscriptionCredentialProvider,
-		mockContext.HttpClient,
-		roleDefinitionsClient,
-		roleAssignmentsClient,
-	)
+	graphClientFactory := func(
+		ctx context.Context,
+		subscriptionId string,
+	) (*graphsdk.GraphClient, error) {
+		client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+		require.NoError(t, err)
+		return client, nil
+	}
+
+	adService := azcli.NewAdService(graphClientFactory, roleDefinitionsClient, roleAssignmentsClient)
 
 	// Singletons
 	ioc.RegisterInstance(mockContext.Container, *mockContext.Context)

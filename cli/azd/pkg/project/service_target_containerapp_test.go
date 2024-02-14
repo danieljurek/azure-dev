@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appcontainers/armappcontainers/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerregistry/armcontainerregistry"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/containerapps"
 	"github.com/azure/azure-dev/cli/azd/pkg/convert"
 	"github.com/azure/azure-dev/cli/azd/pkg/environment"
@@ -146,10 +147,11 @@ func createContainerAppServiceTarget(
 		mockContext.Credentials,
 		mockContext.ArmClientOptions,
 	)
-
+	clientOptionsBuilder := azsdk.NewClientOptionsBuilderFactory(mockContext.HttpClient, "azd").
+		ClientOptionsBuilder()
 	containerRegistryService := azcli.NewContainerRegistryService(
+		clientOptionsBuilder,
 		credentialProvider,
-		mockContext.HttpClient,
 		dockerCli,
 		containerRegistryClient,
 	)

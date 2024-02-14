@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerregistry/armcontainerregistry"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v2"
 	"github.com/azure/azure-dev/cli/azd/pkg/async"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/convert"
 	"github.com/azure/azure-dev/cli/azd/pkg/environment"
 	"github.com/azure/azure-dev/cli/azd/pkg/exec"
@@ -583,7 +584,9 @@ func createAksServiceTarget(
 	)
 
 	managedClustersService := azcli.NewManagedClustersService(managedClusterClient)
-	containerRegistryService := azcli.NewContainerRegistryService(credentialProvider, mockContext.HttpClient, dockerCli, registriesClient)
+	clientOptionsBuilder := azsdk.NewClientOptionsBuilderFactory(mockContext.HttpClient, "azd").
+		ClientOptionsBuilder()
+	containerRegistryService := azcli.NewContainerRegistryService(clientOptionsBuilder, credentialProvider, dockerCli, registriesClient)
 	containerHelper := NewContainerHelper(env, envManager, clock.NewMock(), containerRegistryService, dockerCli)
 
 	return NewAksTarget(

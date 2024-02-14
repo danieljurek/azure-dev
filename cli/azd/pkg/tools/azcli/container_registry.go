@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerregistry/armcontainerregistry"
 	"github.com/azure/azure-dev/cli/azd/internal"
 	"github.com/azure/azure-dev/cli/azd/pkg/account"
+	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/azure"
 	"github.com/azure/azure-dev/cli/azd/pkg/httputil"
 	"github.com/azure/azure-dev/cli/azd/pkg/tools/docker"
@@ -46,26 +47,24 @@ type ContainerRegistryService interface {
 }
 
 type containerRegistryService struct {
-	credentialProvider account.SubscriptionCredentialProvider
-	docker             docker.Docker
-	httpClient         httputil.HttpClient
-	userAgent          string
-	registriesClient   *armcontainerregistry.RegistriesClient
+	clientOptionsBuilder *azsdk.ClientOptionsBuilder
+	credentialProvider   account.SubscriptionCredentialProvider
+	docker               docker.Docker
+	registriesClient     *armcontainerregistry.RegistriesClient
 }
 
 // Creates a new instance of the ContainerRegistryService
 func NewContainerRegistryService(
+	clientOptionsBuilder *azsdk.ClientOptionsBuilder,
 	credentialProvider account.SubscriptionCredentialProvider,
-	httpClient httputil.HttpClient,
 	docker docker.Docker,
 	registriesClient *armcontainerregistry.RegistriesClient,
 ) ContainerRegistryService {
 	return &containerRegistryService{
-		credentialProvider: credentialProvider,
-		docker:             docker,
-		httpClient:         httpClient,
-		userAgent:          internal.UserAgent(),
-		registriesClient:   registriesClient,
+		clientOptionsBuilder: clientOptionsBuilder,
+		credentialProvider:   credentialProvider,
+		docker:               docker,
+		registriesClient:     registriesClient,
 	}
 }
 
@@ -233,8 +232,7 @@ func (crs *containerRegistryService) getAcrToken(
 	}
 
 	// Implementation based on docs @ https://azure.github.io/acr/AAD-OAuth.html
-	// TODO: This is likely a legitimate use of clientOptionsBuilder. IT IS! Inject the client options and let's be on our way.
-	options := clientOptionsBuilder(crs.httpClient, crs.userAgent).BuildCoreClientOptions()
+	options := crs.clientOptionsBuilder.BuildCoreClientOptions()
 	pipeline := azruntime.NewPipeline("azd-acr", internal.Version, azruntime.PipelineOptions{}, options)
 
 	formData := url.Values{}

@@ -400,7 +400,7 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 
 	// Default client options
 	container.MustRegisterSingleton(func(
-		clientOptionsBuilderFactory azsdk.ClientOptionsBuilderFactory,
+		clientOptionsBuilderFactory *azsdk.ClientOptionsBuilderFactory,
 		userAgent httputil.UserAgent,
 	) *azcore.ClientOptions {
 		return clientOptionsBuilderFactory.
@@ -411,7 +411,7 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 	})
 
 	container.MustRegisterSingleton(func(
-		clientOptionsBuilderFactory azsdk.ClientOptionsBuilderFactory,
+		clientOptionsBuilderFactory *azsdk.ClientOptionsBuilderFactory,
 		userAgent httputil.UserAgent,
 	) *arm.ClientOptions {
 		return clientOptionsBuilderFactory.
@@ -472,23 +472,10 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 	})
 	container.MustRegisterScoped(azapi.NewDeploymentOperations)
 
-	container.MustRegisterScoped(func(
-		options *azcore.ClientOptions,
-		credential azcore.TokenCredential,
-	) func(string) (*azsecrets.Client, error) {
-		secretsClientOptions := &azsecrets.ClientOptions{
-			ClientOptions:                        *options,
-			DisableChallengeResourceVerification: false,
-		}
-		return func(vaultUrl string) (*azsecrets.Client, error) {
-			return azsecrets.NewClient(vaultUrl, credential, secretsClientOptions)
-		}
-	})
-
 	/////////////////////////////////////////////
 	container.MustRegisterSingleton(func(
 		credential account.TokenCredentialForSubscription,
-		clientOptionsBuilderFactory azsdk.ClientOptionsBuilderFactory,
+		clientOptionsBuilderFactory *azsdk.ClientOptionsBuilderFactory,
 		userAgent httputil.UserAgent,
 	) (*armauthorization.RoleDefinitionsClient, error) {
 		// Custom options because this client does not have correlation policies
@@ -506,7 +493,7 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 	container.MustRegisterScoped(func(
 		subscriptionId environment.SubscriptionId,
 		credential account.TokenCredentialForSubscription,
-		clientOptionsBuilderFactory azsdk.ClientOptionsBuilderFactory,
+		clientOptionsBuilderFactory *azsdk.ClientOptionsBuilderFactory,
 		userAgent httputil.UserAgent,
 	) (*armauthorization.RoleAssignmentsClient, error) {
 		// Custom options because this client does not have correlation policies
@@ -517,7 +504,7 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 	})
 
 	container.MustRegisterScoped(func(
-		clientOptionsBuilderFactory azsdk.ClientOptionsBuilderFactory,
+		clientOptionsBuilderFactory *azsdk.ClientOptionsBuilderFactory,
 		credential azcore.TokenCredential,
 	) (*armresourcegraph.Client, error) {
 		options := clientOptionsBuilderFactory.ClientOptionsBuilder().
@@ -678,13 +665,42 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 	})
 
 	container.MustRegisterScoped(func(
-		clientOptionsBuilderFactory azsdk.ClientOptionsBuilderFactory,
+		options *azcore.ClientOptions,
 		credential azcore.TokenCredential,
-	) (*graphsdk.GraphClient, error) {
-		options := clientOptionsBuilderFactory.ClientOptionsBuilder().
-			WithPerCallPolicy(azsdk.NewMsGraphCorrelationPolicy()).
-			BuildCoreClientOptions()
-		return graphsdk.NewGraphClient(credential, options)
+	) func(string) (*azsecrets.Client, error) {
+		secretsClientOptions := &azsecrets.ClientOptions{
+			ClientOptions:                        *options,
+			DisableChallengeResourceVerification: false,
+		}
+		return func(vaultUrl string) (*azsecrets.Client, error) {
+			return azsecrets.NewClient(vaultUrl, credential, secretsClientOptions)
+		}
+	})
+
+	container.MustRegisterScoped(func(
+		options *azcore.ClientOptions,
+		credentialProvider account.SubscriptionCredentialProvider,
+	) func(context.Context, string) (*graphsdk.GraphClient, error) {
+		clientCache := make(map[string]*graphsdk.GraphClient)
+
+		return func(ctx context.Context, subscriptionId string) (*graphsdk.GraphClient, error) {
+			if client, has := clientCache[subscriptionId]; has {
+				return client, nil
+			}
+
+			credential, err := credentialProvider.CredentialForSubscription(ctx, subscriptionId)
+			if err != nil {
+				return nil, err
+			}
+
+			client, err := graphsdk.NewGraphClient(credential, options)
+			if err != nil {
+				return nil, err
+			}
+
+			clientCache[subscriptionId] = client
+			return client, nil
+		}
 	})
 
 	// For secrets: do a factory function, and then add a TODO about caching
@@ -703,11 +719,17 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 	// BOTTOM OF CLIENT REGISTRATIONS
 	//////////////////////////////////////////////////////////////////////////////////////////
 
-	container.MustRegisterSingleton(func(
+	container.MustRegisterScoped(func(
 		httpClient httputil.HttpClient,
 		userAgent httputil.UserAgent,
 	) *azsdk.ClientOptionsBuilderFactory {
 		return azsdk.NewClientOptionsBuilderFactory(httpClient, string(userAgent))
+	})
+
+	container.MustRegisterScoped(func(
+		clientOptionsBuilderFactory *azsdk.ClientOptionsBuilderFactory,
+	) *azsdk.ClientOptionsBuilder {
+		return clientOptionsBuilderFactory.ClientOptionsBuilder()
 	})
 
 	container.MustRegisterSingleton(templates.NewTemplateManager)
@@ -771,6 +793,7 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 		subscriptionId environment.SubscriptionId,
 		credProvider account.SubscriptionCredentialProvider,
 	) (account.TokenCredentialForSubscription, error) {
+		// Warning: this violates using ctx of from lower in the stack
 		return credProvider.CredentialForSubscription(ctx, string(subscriptionId))
 	})
 

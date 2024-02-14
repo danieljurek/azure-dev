@@ -10,12 +10,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
-	azdinternal "github.com/azure/azure-dev/cli/azd/internal"
-	"github.com/azure/azure-dev/cli/azd/pkg/account"
 	"github.com/azure/azure-dev/cli/azd/pkg/azure"
 	"github.com/azure/azure-dev/cli/azd/pkg/convert"
 	"github.com/azure/azure-dev/cli/azd/pkg/graphsdk"
-	"github.com/azure/azure-dev/cli/azd/pkg/httputil"
 	"github.com/google/uuid"
 	"github.com/sethvargo/go-retry"
 )
@@ -73,27 +70,19 @@ type AdService interface {
 }
 
 type adService struct {
-	credentialProvider account.SubscriptionCredentialProvider
-	httpClient         httputil.HttpClient
-	userAgent          string
-	clientCache        map[string]*graphsdk.GraphClient
-
+	graphClientFactory    func(context.Context, string) (*graphsdk.GraphClient, error)
 	roleDefinitionsClient *armauthorization.RoleDefinitionsClient
 	roleAssignmentsClient *armauthorization.RoleAssignmentsClient
 }
 
 // Creates a new instance of the AdService
 func NewAdService(
-	credentialProvider account.SubscriptionCredentialProvider,
-	httpClient httputil.HttpClient,
+	graphClientFactory func(context.Context, string) (*graphsdk.GraphClient, error),
 	roleDefinitionsClient *armauthorization.RoleDefinitionsClient,
 	roleAssignmentsClient *armauthorization.RoleAssignmentsClient,
 ) AdService {
 	return &adService{
-		credentialProvider:    credentialProvider,
-		httpClient:            httpClient,
-		userAgent:             azdinternal.UserAgent(),
-		clientCache:           map[string]*graphsdk.GraphClient{},
+		graphClientFactory:    graphClientFactory,
 		roleDefinitionsClient: roleDefinitionsClient,
 		roleAssignmentsClient: roleAssignmentsClient,
 	}
@@ -158,7 +147,7 @@ func (ad *adService) ResetPasswordCredentials(
 	appId string,
 ) (*AzureCredentials, error) {
 	// Subscription can be injected into client
-	graphClient, err := ad.getOrCreateGraphClient(ctx, subscriptionId)
+	graphClient, err := ad.graphClientFactory(ctx, subscriptionId)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +199,7 @@ func (ad *adService) ApplyFederatedCredentials(
 	federatedCredentials []*graphsdk.FederatedIdentityCredential,
 ) ([]*graphsdk.FederatedIdentityCredential, error) {
 	// Subscription can be injected into client
-	graphClient, err := ad.getOrCreateGraphClient(ctx, subscriptionId)
+	graphClient, err := ad.graphClientFactory(ctx, subscriptionId)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +267,7 @@ func (ad *adService) getApplicationByAppId(
 	subscriptionId string,
 	appId string,
 ) (*graphsdk.Application, error) {
-	graphClient, err := ad.getOrCreateGraphClient(ctx, subscriptionId)
+	graphClient, err := ad.graphClientFactory(ctx, subscriptionId)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +288,7 @@ func (ad *adService) getApplicationByName(
 	subscriptionId string,
 	applicationName string,
 ) (*graphsdk.Application, error) {
-	graphClient, err := ad.getOrCreateGraphClient(ctx, subscriptionId)
+	graphClient, err := ad.graphClientFactory(ctx, subscriptionId)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +319,7 @@ func (ad *adService) createApplication(
 	subscriptionId string,
 	applicationName string,
 ) (*graphsdk.Application, error) {
-	graphClient, err := ad.getOrCreateGraphClient(ctx, subscriptionId)
+	graphClient, err := ad.graphClientFactory(ctx, subscriptionId)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +344,7 @@ func (ad *adService) getServicePrincipal(
 	subscriptionId string,
 	application *graphsdk.Application,
 ) (*graphsdk.ServicePrincipal, error) {
-	graphClient, err := ad.getOrCreateGraphClient(ctx, subscriptionId)
+	graphClient, err := ad.graphClientFactory(ctx, subscriptionId)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +375,7 @@ func (ad *adService) ensureServicePrincipal(
 	subscriptionId string,
 	application *graphsdk.Application,
 ) (*graphsdk.ServicePrincipal, error) {
-	graphClient, err := ad.getOrCreateGraphClient(ctx, subscriptionId)
+	graphClient, err := ad.graphClientFactory(ctx, subscriptionId)
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +408,7 @@ func (ad *adService) ensureFederatedCredential(
 	existingCredentials []graphsdk.FederatedIdentityCredential,
 	repoCredential *graphsdk.FederatedIdentityCredential,
 ) (*graphsdk.FederatedIdentityCredential, error) {
-	graphClient, err := ad.getOrCreateGraphClient(ctx, subscriptionId)
+	graphClient, err := ad.graphClientFactory(ctx, subscriptionId)
 	if err != nil {
 		return nil, err
 	}
@@ -569,31 +558,4 @@ func (ad *adService) getRoleDefinition(
 	}
 
 	return roleDefinitions[0], nil
-}
-
-// Creates a graph users client using credentials from the Go context.
-// TODO: Is the subscription id cache necessary? That doesn't lend itself well
-// to the current injection strategy.
-func (ad *adService) getOrCreateGraphClient(
-	ctx context.Context,
-	subscriptionId string,
-) (*graphsdk.GraphClient, error) {
-	if client, ok := ad.clientCache[subscriptionId]; ok {
-		return client, nil
-	}
-
-	credential, err := ad.credentialProvider.CredentialForSubscription(ctx, subscriptionId)
-	if err != nil {
-		return nil, err
-	}
-
-	options := clientOptionsBuilder(ad.httpClient, ad.userAgent).BuildCoreClientOptions()
-	client, err := graphsdk.NewGraphClient(credential, options)
-	if err != nil {
-		return nil, fmt.Errorf("creating Graph Users client: %w", err)
-	}
-
-	ad.clientCache[subscriptionId] = client
-
-	return client, nil
 }

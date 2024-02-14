@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/azure/azure-dev/cli/azd/pkg/environment"
 	"github.com/azure/azure-dev/cli/azd/pkg/exec"
+	"github.com/azure/azure-dev/cli/azd/pkg/graphsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/infra/provisioning"
 	"github.com/azure/azure-dev/cli/azd/pkg/tools/azcli"
 	"github.com/azure/azure-dev/cli/azd/pkg/tools/git"
@@ -127,15 +128,19 @@ func createGitHubCiProvider(t *testing.T, mockContext *mocks.MockContext) CiProv
 		"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 	require.NoError(t, err)
 
+	graphClientFactory := func(
+		ctx context.Context,
+		subscriptionId string,
+	) (*graphsdk.GraphClient, error) {
+		client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+		require.NoError(t, err)
+		return client, nil
+	}
+
 	return NewGitHubCiProvider(
 		env,
 		mockContext.SubscriptionCredentialProvider,
-		azcli.NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
-			roleDefinitionsClient,
-			roleAssignmentsClient,
-		),
+		azcli.NewAdService(graphClientFactory, roleDefinitionsClient, roleAssignmentsClient),
 		ghCli,
 		git.NewGitCli(mockContext.CommandRunner),
 		mockContext.Console,

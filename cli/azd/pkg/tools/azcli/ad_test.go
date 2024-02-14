@@ -76,9 +76,17 @@ func Test_CreateOrUpdateServicePrincipal(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -130,9 +138,17 @@ func Test_CreateOrUpdateServicePrincipal(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -181,9 +197,17 @@ func Test_CreateOrUpdateServicePrincipal(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -227,9 +251,17 @@ func Test_CreateOrUpdateServicePrincipal(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -260,9 +292,17 @@ func Test_CreateOrUpdateServicePrincipal(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -298,9 +338,17 @@ func Test_ApplyFederatedCredentials(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -364,9 +412,17 @@ func Test_ApplyFederatedCredentials(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -439,9 +495,17 @@ func Test_ApplyFederatedCredentials(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -494,9 +558,17 @@ func Test_ApplyFederatedCredentials(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -566,9 +638,17 @@ func Test_ResetPasswordCredentials(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -597,9 +677,17 @@ func Test_ResetPasswordCredentials(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -632,9 +720,17 @@ func Test_ResetPasswordCredentials(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
@@ -669,9 +765,17 @@ func Test_ResetPasswordCredentials(t *testing.T) {
 			"SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 		require.NoError(t, err)
 
+		graphClientFactory := func(
+			ctx context.Context,
+			subscriptionId string,
+		) (*graphsdk.GraphClient, error) {
+			client, err := graphsdk.NewGraphClient(mockContext.Credentials, mockContext.CoreClientOptions)
+			require.NoError(t, err)
+			return client, nil
+		}
+
 		adService := NewAdService(
-			mockContext.SubscriptionCredentialProvider,
-			mockContext.HttpClient,
+			graphClientFactory,
 			roleDefinitionsClient,
 			roleAssignmentsClient,
 		)
