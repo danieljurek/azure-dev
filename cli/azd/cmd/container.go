@@ -393,9 +393,29 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 
 	// TODO: File this registration in a reasonable place
 	container.MustRegisterScoped(func(
+		ctx context.Context,
+		envManager environment.Manager,
 		env *environment.Environment,
-	) environment.SubscriptionId {
-		return environment.SubscriptionId(env.GetSubscriptionId())
+		// Import cycle for prompter
+		// prompter prompt.Prompter,
+	) (environment.SubscriptionId, error) {
+		// TODO: Cleanup
+		// err := provisioning.EnsureSubscription(
+		// 	ctx,
+		// 	envManager,
+		// 	env,
+		// 	prompter,
+		// )
+		// if err != nil {
+		// 	return "", err
+		// }
+
+		subId := env.GetSubscriptionId()
+		if subId == "" {
+			return "", fmt.Errorf("subscription id not found in container")
+		}
+
+		return environment.SubscriptionId(subId), nil
 	})
 
 	// Default client options
@@ -678,6 +698,7 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 	})
 
 	container.MustRegisterScoped(func(
+		// TODO: are injected options appropriate or do we need to use NewMsGraphCorrelationPolicy?
 		options *azcore.ClientOptions,
 		credentialProvider account.SubscriptionCredentialProvider,
 	) func(context.Context, string) (*graphsdk.GraphClient, error) {
@@ -700,6 +721,16 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 
 			clientCache[subscriptionId] = client
 			return client, nil
+		}
+	})
+
+	container.MustRegisterScoped(func(
+		optionsBuilder *azsdk.ClientOptionsBuilder,
+	) func(cred azcore.TokenCredential) (*graphsdk.GraphClient, error) {
+		options := optionsBuilder.WithPerCallPolicy(azsdk.NewMsGraphCorrelationPolicy()).BuildCoreClientOptions()
+
+		return func(cred azcore.TokenCredential) (*graphsdk.GraphClient, error) {
+			return graphsdk.NewGraphClient(cred, options)
 		}
 	})
 

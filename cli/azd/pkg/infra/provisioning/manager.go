@@ -160,14 +160,11 @@ func (m *Manager) UpdateEnvironment(
 	return nil
 }
 
-// EnsureSubscriptionAndLocation ensures that that that subscription (AZURE_SUBSCRIPTION_ID) and location (AZURE_LOCATION)
-// variables are set in the environment, prompting the user for the values if they do not exist.
-func EnsureSubscriptionAndLocation(
+func EnsureSubscription(
 	ctx context.Context,
 	envManager environment.Manager,
 	env *environment.Environment,
 	prompter prompt.Prompter,
-	locationFiler prompt.LocationFilterPredicate,
 ) error {
 	subId := env.GetSubscriptionId()
 	if subId == "" {
@@ -184,6 +181,23 @@ func EnsureSubscriptionAndLocation(
 	// so that `azd deploy` can just use the values from .env w/o checking os-env again.
 	env.SetSubscriptionId(subId)
 	if err := envManager.Save(ctx, env); err != nil {
+		return err
+	}
+	return nil
+}
+
+// EnsureSubscriptionAndLocation ensures that that that subscription (AZURE_SUBSCRIPTION_ID) and location (AZURE_LOCATION)
+// variables are set in the environment, prompting the user for the values if they do not exist.
+func EnsureSubscriptionAndLocation(
+	ctx context.Context,
+	envManager environment.Manager,
+	env *environment.Environment,
+	prompter prompt.Prompter,
+	// Location filter is domain-specific and should not be injected (at this time)
+	locationFiler prompt.LocationFilterPredicate,
+) error {
+	err := EnsureSubscription(ctx, envManager, env, prompter)
+	if err != nil {
 		return err
 	}
 

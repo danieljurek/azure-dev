@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/azure/azure-dev/cli/azd/pkg/auth"
@@ -12,19 +13,29 @@ import (
 
 // UserProfileService allows querying for user profile information.
 type UserProfileService struct {
-	credentialProvider auth.MultiTenantCredentialProvider
-	graphClient        *graphsdk.GraphClient
+	credentialProvider  auth.MultiTenantCredentialProvider
+	graphClientFromCred func(cred azcore.TokenCredential) (*graphsdk.GraphClient, error)
 }
 
 func NewUserProfileService(
 	credentialProvider auth.MultiTenantCredentialProvider,
-	graphClient *graphsdk.GraphClient,
+	graphClientFromCred func(cred azcore.TokenCredential) (*graphsdk.GraphClient, error),
 ) *UserProfileService {
-	return &UserProfileService{credentialProvider, graphClient}
+	return &UserProfileService{credentialProvider, graphClientFromCred}
 }
 
 func (user *UserProfileService) GetSignedInUserId(ctx context.Context, tenantId string) (string, error) {
-	userProfile, err := user.graphClient.Me().Get(ctx)
+	cred, err := user.credentialProvider.GetTokenCredential(ctx, tenantId)
+	if err != nil {
+		return "", err
+	}
+
+	graphClient, err := user.graphClientFromCred(cred)
+	if err != nil {
+		return "", fmt.Errorf("failed creating graph client: %w", err)
+	}
+
+	userProfile, err := graphClient.Me().Get(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed retrieving current user profile: %w", err)
 	}
