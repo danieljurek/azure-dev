@@ -29,7 +29,6 @@ type AzCliKeyVaultSecret struct {
 
 func (cli *azCli) GetKeyVault(
 	ctx context.Context,
-	subscriptionId string,
 	resourceGroupName string,
 	vaultName string,
 ) (*AzCliKeyVault, error) {
@@ -82,7 +81,7 @@ func (cli *azCli) GetKeyVaultSecret(
 	}, nil
 }
 
-func (cli *azCli) PurgeKeyVault(ctx context.Context, subscriptionId string, vaultName string, location string) error {
+func (cli *azCli) PurgeKeyVault(ctx context.Context, vaultName string, location string) error {
 	poller, err := cli.keyVaultsClient.BeginPurgeDeleted(ctx, vaultName, location, nil)
 	if err != nil {
 		return fmt.Errorf("starting purging key vault: %w", err)

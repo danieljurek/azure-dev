@@ -1242,7 +1242,7 @@ func (p *BicepProvider) getKeyVaults(
 	for resourceGroup, groupResources := range groupedResources {
 		for _, resource := range groupResources {
 			if resource.Type == string(infra.AzureResourceTypeKeyVault) {
-				vault, err := p.azCli.GetKeyVault(ctx, azure.SubscriptionFromRID(resource.Id), resourceGroup, resource.Name)
+				vault, err := p.azCli.GetKeyVault(ctx, resourceGroup, resource.Name)
 				if err != nil {
 					return nil, fmt.Errorf("listing key vault %s properties: %w", resource.Name, err)
 				}
@@ -1368,7 +1368,7 @@ func (p *BicepProvider) purgeKeyVaults(
 	for _, keyVault := range keyVaults {
 		err := p.runPurgeAsStep(ctx, "Key Vault", keyVault.Name, func() error {
 			return p.azCli.PurgeKeyVault(
-				ctx, azure.SubscriptionFromRID(keyVault.Id), keyVault.Name, keyVault.Location)
+				ctx, keyVault.Name, keyVault.Location)
 		}, skip)
 		if err != nil {
 			return fmt.Errorf("purging key vault %s: %w", keyVault.Name, err)
