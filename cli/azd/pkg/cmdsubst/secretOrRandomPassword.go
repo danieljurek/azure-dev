@@ -55,7 +55,7 @@ func (e *SecretOrRandomPasswordCommandExecutor) Run(
 		return false, "", fmt.Errorf("missing context information for %s command", SecretOrRandomPasswordCommandName)
 	}
 
-	secret, err := e.azCli.GetKeyVaultSecret(ctx, e.subscriptionId, keyVaultName, secretName)
+	secret, err := e.azCli.GetKeyVaultSecret(ctx, keyVaultName, secretName)
 	if err != nil {
 		if errors.Is(err, azcli.ErrAzCliSecretNotFound) {
 			log.Printf(

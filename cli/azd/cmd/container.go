@@ -22,6 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/keyvault/armkeyvault"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/azure/azure-dev/cli/azd/cmd/actions"
 	"github.com/azure/azure-dev/cli/azd/cmd/middleware"
@@ -471,6 +472,19 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 	})
 	container.MustRegisterScoped(azapi.NewDeploymentOperations)
 
+	container.MustRegisterScoped(func(
+		options *azcore.ClientOptions,
+		credential azcore.TokenCredential,
+	) func(string) (*azsecrets.Client, error) {
+		secretsClientOptions := &azsecrets.ClientOptions{
+			ClientOptions:                        *options,
+			DisableChallengeResourceVerification: false,
+		}
+		return func(vaultUrl string) (*azsecrets.Client, error) {
+			return azsecrets.NewClient(vaultUrl, credential, secretsClientOptions)
+		}
+	})
+
 	/////////////////////////////////////////////
 	container.MustRegisterSingleton(func(
 		credential account.TokenCredentialForSubscription,
@@ -766,58 +780,20 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 		credentialProvider account.SubscriptionCredentialProvider,
 		httpClient httputil.HttpClient,
 		serviceLocator ioc.ServiceLocator,
+		apimDeletedClient *armapimanagement.DeletedServicesClient,
+		apimServiceClient *armapimanagement.ServiceClient,
+		appConfigStoresClient *armappconfiguration.ConfigurationStoresClient,
+		cognitiveServicesAccountsClient *armcognitiveservices.AccountsClient,
+		cognitiveServicesDeletedAccountsClient *armcognitiveservices.DeletedAccountsClient,
+		keyVaultsClient *armkeyvault.VaultsClient,
+		managedHsmsClient *armkeyvault.ManagedHsmsClient,
+		resourcesClient *armresources.Client,
+		resourceGroupsClient *armresources.ResourceGroupsClient,
+		staticSitesClient *armappservice.StaticSitesClient,
+		webAppsClient *armappservice.WebAppsClient,
+		zipDeployClient *azsdk.ZipDeployClient,
+		secretsClientFactory func(string) (*azsecrets.Client, error),
 	) (azcli.AzCli, error) {
-
-		var apimDeletedClient *armapimanagement.DeletedServicesClient
-		var apimServiceClient *armapimanagement.ServiceClient
-		var appConfigStoresClient *armappconfiguration.ConfigurationStoresClient
-		var cognitiveServicesAccountsClient *armcognitiveservices.AccountsClient
-		var cognitiveServicesDeletedAccountsClient *armcognitiveservices.DeletedAccountsClient
-		var keyVaultsClient *armkeyvault.VaultsClient
-		var managedHsmsClient *armkeyvault.ManagedHsmsClient
-		var resourcesClient *armresources.Client
-		var resourceGroupsClient *armresources.ResourceGroupsClient
-		var staticSitesClient *armappservice.StaticSitesClient
-		var webAppsClient *armappservice.WebAppsClient
-		var zipDeployClient *azsdk.ZipDeployClient
-
-		if err := serviceLocator.Resolve(&apimDeletedClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&apimServiceClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&appConfigStoresClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&cognitiveServicesAccountsClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&cognitiveServicesDeletedAccountsClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&keyVaultsClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&managedHsmsClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&resourcesClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&resourceGroupsClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&staticSitesClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&webAppsClient); err != nil {
-			return nil, err
-		}
-		if err := serviceLocator.Resolve(&zipDeployClient); err != nil {
-			return nil, err
-		}
-
 		return azcli.NewAzCli(
 			credentialProvider,
 			httpClient,
@@ -837,6 +813,7 @@ func registerCommonDependencies(container *ioc.NestedContainer) {
 			staticSitesClient,
 			webAppsClient,
 			zipDeployClient,
+			secretsClientFactory,
 		), nil
 	})
 	container.MustRegisterSingleton(azapi.NewDeployments)

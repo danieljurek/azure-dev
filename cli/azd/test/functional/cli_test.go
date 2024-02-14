@@ -27,7 +27,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/appconfiguration/armappconfiguration"
@@ -35,6 +34,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cognitiveservices/armcognitiveservices"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/keyvault/armkeyvault"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
 	"github.com/azure/azure-dev/cli/azd/internal/telemetry"
 	"github.com/azure/azure-dev/cli/azd/internal/tracing"
 	"github.com/azure/azure-dev/cli/azd/pkg/account"
@@ -160,10 +160,11 @@ func Test_CLI_InfraCreateAndDelete(t *testing.T) {
 		client = http.DefaultClient
 	}
 
-	options := &arm.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: client,
-		},
+	coreClientOptions := &azcore.ClientOptions{
+		Transport: client,
+	}
+	armClientOptions := &arm.ClientOptions{
+		ClientOptions: *coreClientOptions,
 	}
 	azCli := newAzCliInstance(
 		mockaccount.SubscriptionCredentialProviderFunc(
@@ -172,13 +173,14 @@ func Test_CLI_InfraCreateAndDelete(t *testing.T) {
 			}),
 		cred,
 		azcli.NewAzCliArgs{},
-		options,
+		armClientOptions,
+		coreClientOptions,
 	)
 
 	deploymentOperationsClient, err := armresources.NewDeploymentOperationsClient(
 		env.GetSubscriptionId(),
 		cred,
-		options,
+		armClientOptions,
 	)
 	require.NoError(t, err)
 	deploymentOperations := azapi.NewDeploymentOperations(deploymentOperationsClient)
@@ -378,10 +380,11 @@ func Test_CLI_InfraCreateAndDeleteUpperCase(t *testing.T) {
 		t.Fatal("could not create credential")
 	}
 
-	options := &arm.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: client,
-		},
+	coreClientOptions := &azcore.ClientOptions{
+		Transport: client,
+	}
+	armClientOptions := &arm.ClientOptions{
+		ClientOptions: *coreClientOptions,
 	}
 
 	azCli := newAzCliInstance(
@@ -391,13 +394,14 @@ func Test_CLI_InfraCreateAndDeleteUpperCase(t *testing.T) {
 			}),
 		cred,
 		azcli.NewAzCliArgs{},
-		options,
+		armClientOptions,
+		coreClientOptions,
 	)
 
 	deploymentOperationsClient, err := armresources.NewDeploymentOperationsClient(
 		env.GetSubscriptionId(),
 		cred,
-		options,
+		armClientOptions,
 	)
 	require.NoError(t, err)
 	deploymentOperations := azapi.NewDeploymentOperations(deploymentOperationsClient)
@@ -915,6 +919,7 @@ func newAzCliInstance(
 	cred azcore.TokenCredential,
 	args azcli.NewAzCliArgs,
 	armClientOptions *arm.ClientOptions,
+	coreClientOptions *azcore.ClientOptions,
 ) azcli.AzCli {
 	deletedServicesClient, _ := armapimanagement.NewDeletedServicesClient("SUBSCRIPTION_ID", cred, armClientOptions)
 	serviceClient, _ := armapimanagement.NewServiceClient("SUBSCRIPTION_ID", cred, armClientOptions)
@@ -928,6 +933,14 @@ func newAzCliInstance(
 	staticSitesClient, _ := armappservice.NewStaticSitesClient("SUBSCRIPTION_ID", cred, armClientOptions)
 	webAppsClient, _ := armappservice.NewWebAppsClient("SUBSCRIPTION_ID", cred, armClientOptions)
 	zipDeployClient, _ := azsdk.NewZipDeployClient("SUBSCRIPTION_ID", cred, armClientOptions)
+
+	secretsClientOptions := &azsecrets.ClientOptions{
+		ClientOptions:                        *coreClientOptions,
+		DisableChallengeResourceVerification: false,
+	}
+	secretsClientFactory := func(vaultUrl string) (*azsecrets.Client, error) {
+		return azsecrets.NewClient(vaultUrl, cred, secretsClientOptions)
+	}
 
 	return azcli.NewAzCli(
 		credProvider,
@@ -946,6 +959,7 @@ func newAzCliInstance(
 		staticSitesClient,
 		webAppsClient,
 		zipDeployClient,
+		secretsClientFactory,
 	)
 
 }

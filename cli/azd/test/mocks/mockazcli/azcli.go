@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cognitiveservices/armcognitiveservices"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/keyvault/armkeyvault"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
 	"github.com/azure/azure-dev/cli/azd/pkg/azapi"
 	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
 	"github.com/azure/azure-dev/cli/azd/pkg/tools/azcli"
@@ -55,6 +56,15 @@ func NewAzCliFromMockContext(mockContext *mocks.MockContext) azcli.AzCli {
 	webAppsClient, _ := armappservice.NewWebAppsClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
 
 	zipDeployClient, _ := azsdk.NewZipDeployClient("SUBSCRIPTION_ID", mockContext.Credentials, mockContext.ArmClientOptions)
+
+	secretsClientOptions := &azsecrets.ClientOptions{
+		ClientOptions:                        *mockContext.CoreClientOptions,
+		DisableChallengeResourceVerification: false,
+	}
+	secretsClientFactory := func(vaultUrl string) (*azsecrets.Client, error) {
+		return azsecrets.NewClient(vaultUrl, mockContext.Credentials, secretsClientOptions)
+
+	}
 	// nolint:end
 
 	return azcli.NewAzCli(
@@ -75,5 +85,6 @@ func NewAzCliFromMockContext(mockContext *mocks.MockContext) azcli.AzCli {
 		staticSitesClient,
 		webAppsClient,
 		zipDeployClient,
+		secretsClientFactory,
 	)
 }

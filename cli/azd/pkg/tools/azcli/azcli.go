@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/cognitiveservices/armcognitiveservices"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/keyvault/armkeyvault"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets"
 	azdinternal "github.com/azure/azure-dev/cli/azd/internal"
 	"github.com/azure/azure-dev/cli/azd/pkg/account"
 	"github.com/azure/azure-dev/cli/azd/pkg/azsdk"
@@ -62,7 +63,6 @@ type AzCli interface {
 	) (armcognitiveservices.Account, error)
 	GetKeyVaultSecret(
 		ctx context.Context,
-		subscriptionId string,
 		vaultName string,
 		secretName string,
 	) (*AzCliKeyVaultSecret, error)
@@ -207,6 +207,7 @@ func NewAzCli(
 	staticSitesClient *armappservice.StaticSitesClient,
 	webAppsClient *armappservice.WebAppsClient,
 	zipDeployClient *azsdk.ZipDeployClient,
+	secretsClientFactory func(string) (*azsecrets.Client, error),
 ) AzCli {
 	return &azCli{
 		credentialProvider:                     credentialProvider,
@@ -226,6 +227,7 @@ func NewAzCli(
 		staticSitesClient:                      staticSitesClient,
 		webAppsClient:                          webAppsClient,
 		zipDeployClient:                        zipDeployClient,
+		secretsClientFactory:                   secretsClientFactory,
 	}
 }
 
@@ -259,6 +261,8 @@ type azCli struct {
 	webAppsClient *armappservice.WebAppsClient
 
 	zipDeployClient *azsdk.ZipDeployClient
+
+	secretsClientFactory func(string) (*azsecrets.Client, error)
 }
 
 // SetUserAgent sets the user agent that's sent with each call to the Azure
